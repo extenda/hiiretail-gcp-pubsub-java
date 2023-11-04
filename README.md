@@ -1,9 +1,9 @@
 # Extenda Hii Retail GCP PubSub client
 A Google Cloud Platform PubSub client implemented for JDK 21+ (Virtual threads).
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=alert_status&token=6a9c99228f7065b95cf4b2a03f1dc5cde2ae2e74)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=coverage&token=6a9c99228f7065b95cf4b2a03f1dc5cde2ae2e74)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=code_smells&token=6a9c99228f7065b95cf4b2a03f1dc5cde2ae2e74)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=alert_status&token=d1b671c86cbc7b6fb028d64c66e94f4bd97ea80f)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=coverage&token=d1b671c86cbc7b6fb028d64c66e94f4bd97ea80f)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=code_smells&token=d1b671c86cbc7b6fb028d64c66e94f4bd97ea80f)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
 
 
 

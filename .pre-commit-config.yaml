@@ -1,0 +1,9 @@
+default_stages: [commit]
+
+repos:
+  - repo: https://github.com/extenda/pre-commit-hooks
+    rev: v0.8.0
+    hooks:
+      - id: google-java-formatter
+      - id: commitlint
+        stages: [commit-msg]
