@@ -23,6 +23,10 @@ The library supports changing these settings, via environmental variables:
 
   The timeout in seconds to wait for publish result before throwing an error.
 
+* `PUBSUB_EMULATOR_HOST`
+
+  The host url to the PubSub emulator. ***Can also be set as system property, e.g. in tests.***
+
 ## :notebook_with_decorative_cover: Usage
 
 ```xml
