@@ -17,11 +17,11 @@ The library supports changing these settings, via environmental variables:
 
 * `PUBSUB_CLOSE_TIMEOUT_SECONDS`
 
-  The timeout in seconds before forcefully closing the client.
+  The timeout in seconds before forcefully closing the client. Default 10.
 
 * `PUBSUB_WAIT_PUBLISH_SECONDS`
 
-  The timeout in seconds to wait for publish result before throwing an error.
+  The timeout in seconds to wait for publish result before throwing an error. Default 30.
 
 * `PUBSUB_EMULATOR_HOST`
 

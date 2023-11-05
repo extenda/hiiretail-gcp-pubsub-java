@@ -23,9 +23,9 @@ class PubSubClientImpl implements PubSubClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private static final String PUBSUB_CLOSE_TIMEOUT_SECONDS = "PUBSUB_CLOSE_TIMEOUT_SECONDS";
-  private static final int TIMEOUT = 10;
+  private static final int DEFAULT_CLOSE_TIMEOUT = 10;
   private static final String PUBSUB_WAIT_PUBLISH_SECONDS = "PUBSUB_WAIT_PUBLISH_SECONDS";
-  private static final int PUBLISH_TIMEOUT = 60;
+  private static final int PUBLISH_TIMEOUT = 30;
 
   private final Publisher publisher;
   private final ObjectMapper objectMapper;
@@ -92,7 +92,7 @@ class PubSubClientImpl implements PubSubClient {
     Integer timeout =
         Optional.ofNullable(System.getenv(PUBSUB_CLOSE_TIMEOUT_SECONDS))
             .map(Integer::parseInt)
-            .orElse(TIMEOUT);
+            .orElse(DEFAULT_CLOSE_TIMEOUT);
     this.isClosed.set(true);
     publisher.shutdown();
     publisher.awaitTermination(timeout, TimeUnit.SECONDS);
