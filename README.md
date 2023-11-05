@@ -111,5 +111,3 @@ Contributions to the project are welcome, but must adhere to a few guidelines:
 
  * [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) should be followed
  * Install and use a `editorconfig` plugin to use the project supplied settings
-
-
