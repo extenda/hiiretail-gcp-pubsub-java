@@ -11,6 +11,7 @@ class PubSubClientFactoryTest {
 
   @BeforeEach
   void setUp() {
+    System.setProperty(EmulatorRedirect.PUBSUB_EMULATOR_HOST, "localhost:8085");
     factory = new PubSubClientFactory();
   }
 
