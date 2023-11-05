@@ -17,11 +17,15 @@ The library supports changing these settings, via environmental variables:
 
 * `PUBSUB_CLOSE_TIMEOUT_SECONDS`
 
-  The timeout in seconds before forcefully closing the client.
+  The timeout in seconds before forcefully closing the client. Default 10.
 
 * `PUBSUB_WAIT_PUBLISH_SECONDS`
 
-  The timeout in seconds to wait for publish result before throwing an error.
+  The timeout in seconds to wait for publish result before throwing an error. Default 30.
+
+* `PUBSUB_EMULATOR_HOST`
+
+  The host url to the PubSub emulator. ***Can also be set as system property, e.g. in tests.***
 
 ## :notebook_with_decorative_cover: Usage
 
@@ -111,5 +115,3 @@ Contributions to the project are welcome, but must adhere to a few guidelines:
 
  * [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) should be followed
  * Install and use a `editorconfig` plugin to use the project supplied settings
-
-
