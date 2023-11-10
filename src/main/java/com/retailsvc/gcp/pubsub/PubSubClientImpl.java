@@ -88,13 +88,18 @@ class PubSubClientImpl implements PubSubClient {
   }
 
   @Override
-  public void close() throws Exception {
-    Integer timeout =
-        Optional.ofNullable(System.getenv(PUBSUB_CLOSE_TIMEOUT_SECONDS))
-            .map(Integer::parseInt)
-            .orElse(DEFAULT_CLOSE_TIMEOUT);
-    this.isClosed.set(true);
-    publisher.shutdown();
-    publisher.awaitTermination(timeout, TimeUnit.SECONDS);
+  public void close() {
+    try {
+      Integer timeout =
+          Optional.ofNullable(System.getenv(PUBSUB_CLOSE_TIMEOUT_SECONDS))
+              .map(Integer::parseInt)
+              .orElse(DEFAULT_CLOSE_TIMEOUT);
+      this.isClosed.set(true);
+      publisher.shutdown();
+      publisher.awaitTermination(timeout, TimeUnit.SECONDS);
+    } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
+      LOG.error("Interrupted while closing client");
+    }
   }
 }
