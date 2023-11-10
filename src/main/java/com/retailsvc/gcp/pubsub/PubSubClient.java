@@ -24,4 +24,7 @@ public interface PubSubClient extends AutoCloseable {
    * @return True if client has been closed, false otherwise.
    */
   boolean isClosed();
+
+  @Override
+  void close();
 }
