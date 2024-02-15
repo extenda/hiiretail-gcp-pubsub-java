@@ -1,5 +1,6 @@
 package com.retailsvc.gcp.pubsub;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThatException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -13,6 +14,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.core.ApiFutures;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.pubsub.v1.PubsubMessage;
+import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +47,9 @@ class PubSubClientImplTest {
         arguments("", null),
         arguments("{\"key\":\"value\"}", null),
         arguments(testPayload, Map.of()),
+        arguments(ByteBuffer.wrap("value".getBytes(UTF_8)), Map.of()),
+        arguments(ByteBuffer.wrap("value".getBytes(UTF_8)).flip(), Map.of()),
+        arguments(new ByteArrayInputStream("value".getBytes(UTF_8)), Map.of()),
         arguments(testPayload, Map.of("attribute-1", "value-1")));
   }
 
@@ -90,6 +96,17 @@ class PubSubClientImplTest {
   }
 
   @Test
+  void testThrowsOnClosedClient() {
+    PubSubClientImpl client = createClient();
+    client.close();
+
+    assertThatException()
+        .isThrownBy(() -> client.publish("", null))
+        .isInstanceOf(PubSubClientException.class)
+        .withMessage("Client is closed");
+  }
+
+  @Test
   void testThrowsTimeoutException() throws Exception {
     doAnswer(
             ignored -> {
@@ -107,13 +124,6 @@ class PubSubClientImplTest {
     verify(mockPublisher).shutdown();
     verify(mockPublisher).awaitTermination(10L, TimeUnit.SECONDS);
   }
-
-  //
-  //  private void withScopedValues(Runnable runnable) {
-  //    ScopedValue.where(CorrelationId.SCOPED_CORRELATION, correlationId)
-  //        .where(TenantId.SCOPED_TENANT, TEST_RUNNER)
-  //        .run(runnable);
-  //  }
 
   private PubSubClientImpl createClient() {
     return new PubSubClientImpl(() -> mockPublisher, objectMapper);

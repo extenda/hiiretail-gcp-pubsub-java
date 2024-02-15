@@ -5,8 +5,6 @@ A Google Cloud Platform PubSub client implemented for JDK 21+ (Virtual threads).
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=coverage&token=d1b671c86cbc7b6fb028d64c66e94f4bd97ea80f)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=extenda_hiiretail-gcp-pubsub-java&metric=code_smells&token=d1b671c86cbc7b6fb028d64c66e94f4bd97ea80f)](https://sonarcloud.io/dashboard?id=extenda_hiiretail-gcp-pubsub-java)
 
-
-
 ## :nut_and_bolt: Configuration
 
 The library supports changing these settings, via environmental variables:
@@ -83,9 +81,16 @@ ObjectMapper objectMapper = new ObjectMapper();
 PubSubClientFactory factory = new PubSubClientFactory(objectMapper);
 PubSubClient pubSubClient = factory.create("example.entities.v1");
 
-String json = "{ ... }"; // or Record class, POJO etc.
+Object payload = ...
+/*
+ 'payload' could be any of the supported types:
+  - String, such as "{ .. }", "my text" etc.
+  - ByteBuffer
+  - InputStream
+  - Any Jackson serializable type such as Record class, List etc.
+*/
 Map<String, String> attributes = Map.of("Tenant-Id", "...", "key", "value");
-pubSubClient.publish(json, attributes);
+pubSubClient.publish(payload, attributes);
 ```
 
 ## :wrench: Local development environment
