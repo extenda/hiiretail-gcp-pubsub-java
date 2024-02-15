@@ -1,12 +1,14 @@
 package com.retailsvc.gcp.pubsub;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -51,16 +53,18 @@ class PubSubClientImpl implements PubSubClient {
       throw new PubSubClientException("Client is closed");
     }
 
-    var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
-
     try {
-      if (payloadObject instanceof String stringPayload) {
-        publish(ByteString.copyFromUtf8(stringPayload), attributes);
-      } else {
-        var payloadBytes = objectMapper.writeValueAsBytes(payloadObject);
-        publish(ByteString.copyFrom(payloadBytes), attributes);
-      }
-    } catch (NullPointerException | JsonProcessingException e) {
+      ByteString payload =
+          switch (payloadObject) {
+            case String s -> ByteString.copyFromUtf8(s);
+            case ByteBuffer b -> ByteString.copyFrom(b);
+            case InputStream i -> ByteString.readFrom(i);
+            case null -> throw new PubSubClientException("Payload object cannot be null");
+            default -> ByteString.copyFrom(objectMapper.writeValueAsBytes(payloadObject));
+          };
+      var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
+      publish(payload, attributes);
+    } catch (NullPointerException | IOException e) {
       throw new PubSubClientException("Could not read payload", e);
     }
   }
