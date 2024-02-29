@@ -1,7 +1,10 @@
 package com.retailsvc.gcp.pubsub;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.Mockito.mock;
 
+import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,5 +24,12 @@ class PubSubClientFactoryTest {
     PubSubClient client2 = factory.create("test");
 
     assertThat(client1).isSameAs(client2);
+  }
+
+  @Test
+  void customMapper() throws IOException {
+    ObjectToBytesMapper mapper = mock();
+    var custom = assertDoesNotThrow(() -> new PubSubClientFactory(mapper));
+    assertDoesNotThrow(() -> custom.create("test"));
   }
 }

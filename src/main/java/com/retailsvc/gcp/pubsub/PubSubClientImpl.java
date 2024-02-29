@@ -1,6 +1,5 @@
 package com.retailsvc.gcp.pubsub;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
@@ -30,11 +29,11 @@ class PubSubClientImpl implements PubSubClient {
   private static final int PUBLISH_TIMEOUT = 30;
 
   private final Publisher publisher;
-  private final ObjectMapper objectMapper;
+  private final ObjectToBytesMapper objectMapper;
   private final int publishTimeout;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-  public PubSubClientImpl(Supplier<Publisher> publisherFactory, ObjectMapper objectMapper) {
+  public PubSubClientImpl(Supplier<Publisher> publisherFactory, ObjectToBytesMapper objectMapper) {
     Objects.requireNonNull(publisherFactory);
     Objects.requireNonNull(objectMapper, "You need to supply an instance of ObjectMapper");
     this.objectMapper = objectMapper;
@@ -60,7 +59,7 @@ class PubSubClientImpl implements PubSubClient {
             case ByteBuffer b -> ByteString.copyFrom(b);
             case InputStream i -> ByteString.readFrom(i);
             case null -> throw new PubSubClientException("Payload object cannot be null");
-            default -> ByteString.copyFrom(objectMapper.writeValueAsBytes(payloadObject));
+            default -> ByteString.copyFrom(objectMapper.valueAsBytes(payloadObject));
           };
       var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
       publish(payload, attributes);

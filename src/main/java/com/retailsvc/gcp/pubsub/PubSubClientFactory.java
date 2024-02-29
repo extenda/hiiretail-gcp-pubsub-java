@@ -24,7 +24,7 @@ public class PubSubClientFactory {
   public static final String PROJECT_ID = "SERVICE_PROJECT_ID";
 
   private final Map<String, PubSubClient> clientCache = new ConcurrentHashMap<>();
-  private final ObjectMapper objectMapper;
+  private final ObjectToBytesMapper objectMapper;
   private final ReentrantLock lock = new ReentrantLock();
 
   public PubSubClientFactory() {
@@ -32,6 +32,10 @@ public class PubSubClientFactory {
   }
 
   public PubSubClientFactory(ObjectMapper objectMapper) {
+    this(objectMapper::writeValueAsBytes);
+  }
+
+  public PubSubClientFactory(ObjectToBytesMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 
