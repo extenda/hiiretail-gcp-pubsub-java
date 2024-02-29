@@ -126,7 +126,7 @@ class PubSubClientImplTest {
   }
 
   private PubSubClientImpl createClient() {
-    return new PubSubClientImpl(() -> mockPublisher, objectMapper);
+    return new PubSubClientImpl(() -> mockPublisher, objectMapper::writeValueAsBytes);
   }
 
   private record TestPayload(String key) {}
