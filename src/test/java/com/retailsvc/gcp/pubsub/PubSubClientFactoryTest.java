@@ -3,6 +3,8 @@ package com.retailsvc.gcp.pubsub;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,5 +33,13 @@ class PubSubClientFactoryTest {
     ObjectToBytesMapper mapper = mock();
     var custom = assertDoesNotThrow(() -> new PubSubClientFactory(mapper));
     assertDoesNotThrow(() -> custom.create("test"));
+  }
+
+  @Test
+  void pooledFactory() {
+    var pooled = new PubSubClientFactory(PooledPublisherFactory.defaultPool());
+    try (var client = assertDoesNotThrow(() -> pooled.create("test"))) {
+      assertNotNull(client);
+    }
   }
 }

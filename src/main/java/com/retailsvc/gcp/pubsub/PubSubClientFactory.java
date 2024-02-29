@@ -26,17 +26,30 @@ public class PubSubClientFactory {
   private final Map<String, PubSubClient> clientCache = new ConcurrentHashMap<>();
   private final ObjectToBytesMapper objectMapper;
   private final ReentrantLock lock = new ReentrantLock();
+  private final PublisherFactory publisherFactory;
 
   public PubSubClientFactory() {
-    this(new ObjectMapper());
+    this(new ObjectMapper(), new DefaultPublisherFactory());
+  }
+
+  public PubSubClientFactory(PublisherFactory publisherFactory) {
+    this(new ObjectMapper(), publisherFactory);
   }
 
   public PubSubClientFactory(ObjectMapper objectMapper) {
+<<<<<<< HEAD
     this(objectMapper::writeValueAsBytes);
   }
 
   public PubSubClientFactory(ObjectToBytesMapper objectMapper) {
+=======
+    this(objectMapper, new DefaultPublisherFactory());
+  }
+
+  public PubSubClientFactory(ObjectMapper objectMapper, PublisherFactory publisherFactory) {
+>>>>>>> 1695e5b (feat: Add PooledPublisherFactory)
     this.objectMapper = objectMapper;
+    this.publisherFactory = publisherFactory;
   }
 
   /**
@@ -67,7 +80,7 @@ public class PubSubClientFactory {
   private Supplier<Publisher> publisherFactory(String topic) {
     return () -> {
       try {
-        var builder = Publisher.newBuilder(createTopic(topic));
+        var builder = publisherFactory.newBuilder(createTopic(topic));
         emulatorHost().ifPresent(ignored -> EmulatorRedirect.redirect(builder));
         return builder.build();
       } catch (IOException e) {
