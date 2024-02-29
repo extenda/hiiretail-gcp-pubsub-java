@@ -29,25 +29,26 @@ public class PubSubClientFactory {
   private final PublisherFactory publisherFactory;
 
   public PubSubClientFactory() {
-    this(new ObjectMapper(), new DefaultPublisherFactory());
+    this(new ObjectMapper());
+  }
+
+  public PubSubClientFactory(ObjectMapper objectMapper) {
+    this(objectMapper::writeValueAsBytes);
+  }
+
+  public PubSubClientFactory(ObjectToBytesMapper objectMapper) {
+    this(objectMapper, new DefaultPublisherFactory());
   }
 
   public PubSubClientFactory(PublisherFactory publisherFactory) {
     this(new ObjectMapper(), publisherFactory);
   }
 
-  public PubSubClientFactory(ObjectMapper objectMapper) {
-<<<<<<< HEAD
-    this(objectMapper::writeValueAsBytes);
-  }
-
-  public PubSubClientFactory(ObjectToBytesMapper objectMapper) {
-=======
-    this(objectMapper, new DefaultPublisherFactory());
-  }
-
   public PubSubClientFactory(ObjectMapper objectMapper, PublisherFactory publisherFactory) {
->>>>>>> 1695e5b (feat: Add PooledPublisherFactory)
+    this(objectMapper::writeValueAsBytes, publisherFactory);
+  }
+
+  public PubSubClientFactory(ObjectToBytesMapper objectMapper, PublisherFactory publisherFactory) {
     this.objectMapper = objectMapper;
     this.publisherFactory = publisherFactory;
   }

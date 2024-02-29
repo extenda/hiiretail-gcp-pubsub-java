@@ -2,11 +2,9 @@ package com.retailsvc.gcp.pubsub;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.mockito.Mockito.mock;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
 
-import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,10 +27,12 @@ class PubSubClientFactoryTest {
   }
 
   @Test
-  void customMapper() throws IOException {
+  void customMapper() {
     ObjectToBytesMapper mapper = mock();
     var custom = assertDoesNotThrow(() -> new PubSubClientFactory(mapper));
-    assertDoesNotThrow(() -> custom.create("test"));
+    try (var client = assertDoesNotThrow(() -> custom.create("test"))) {
+      assertNotNull(client);
+    }
   }
 
   @Test
