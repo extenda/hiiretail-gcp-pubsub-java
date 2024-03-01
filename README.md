@@ -58,9 +58,8 @@ The library uses `SLF4J` as logging API, so make sure you have `log4j[2]` or `lo
 compatible implementation on the classpath.
 
 To use the PubSub client, you first need to instantiate a `PubSubClientFactory`.\
-The factory can take a custom (Jackson) `ObjectMapper` as parameter, or use its default.
-The mapper is used to convert the objects being sent, to suitable JSONs to publish.
-Therefore, you will also need to add `jackson-databind` if not already present:
+The factory can take a custom `ObjectToBytesMapper` as parameter. The mapper is used to convert the objects being sent,
+to suitable data to publish. If you want to use Jackson to support JSON you will also need to add `jackson-databind` if not already present:
 
 ```xml
 <dependency>
@@ -77,8 +76,15 @@ Any client that is created via the factory is also cached internally by its topi
 ## :scroll: Usage
 
 ```java
-ObjectMapper objectMapper = new ObjectMapper();
-PubSubClientFactory factory = new PubSubClientFactory(objectMapper);
+import com.retailsvc.gcp.pubsub.ObjectToBytesMapper;
+import com.retailsvc.gcp.pubsub.PooledPublisherFactory;
+
+ObjectMapper jsonMapper = new ObjectMapper();
+ObjectToBytesMapper objectMapper = v -> ByteBuffer.wrap(jsonMapper.writeValueAsBytes(v));
+
+PubSubClientFactory factory = new PubSubClientFactory(objectMapper,
+  PooledPublisherFactory.defaultPool());
+
 PubSubClient pubSubClient = factory.create("example.entities.v1");
 
 Object payload = ...
