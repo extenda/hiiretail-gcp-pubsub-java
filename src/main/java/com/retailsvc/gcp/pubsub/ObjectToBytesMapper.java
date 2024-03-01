@@ -1,6 +1,7 @@
 package com.retailsvc.gcp.pubsub;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * A general-purpose mapper for objects to byte representation.
@@ -9,6 +10,7 @@ import java.io.IOException;
  */
 @FunctionalInterface
 public interface ObjectToBytesMapper {
+
   /**
    * Convert a value to bytes.
    *
@@ -16,5 +18,5 @@ public interface ObjectToBytesMapper {
    * @return the byte representation of the value.
    * @throws IOException if failing to convert to bytes.
    */
-  byte[] valueAsBytes(Object value) throws IOException;
+  ByteBuffer valueAsBytes(Object value) throws IOException;
 }
