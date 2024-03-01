@@ -14,6 +14,8 @@ import com.google.pubsub.v1.TopicName;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -36,7 +38,10 @@ class PubSubClientIT {
 
   @BeforeEach
   void setUp() throws Exception {
-    factory = new PubSubClientFactory();
+    factory =
+        new PubSubClientFactory(
+            (ObjectToBytesMapper)
+                v -> ByteBuffer.wrap(String.valueOf(v).getBytes(StandardCharsets.UTF_8)));
 
     emulator.start();
 
