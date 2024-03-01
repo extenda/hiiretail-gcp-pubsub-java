@@ -35,7 +35,6 @@ class PubSubClientImpl implements PubSubClient {
 
   public PubSubClientImpl(Supplier<Publisher> publisherFactory, ObjectToBytesMapper objectMapper) {
     Objects.requireNonNull(publisherFactory);
-    Objects.requireNonNull(objectMapper, "You need to supply an instance of ObjectMapper");
     this.objectMapper = objectMapper;
     this.publisher = publisherFactory.get();
     Objects.requireNonNull(this.publisher);
@@ -59,13 +58,20 @@ class PubSubClientImpl implements PubSubClient {
             case ByteBuffer b -> ByteString.copyFrom(b);
             case InputStream i -> ByteString.readFrom(i);
             case null -> throw new PubSubClientException("Payload object cannot be null");
-            default -> ByteString.copyFrom(objectMapper.valueAsBytes(payloadObject));
+            default -> ByteString.copyFrom(mapValue(payloadObject));
           };
       var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
       publish(payload, attributes);
     } catch (NullPointerException | IOException e) {
       throw new PubSubClientException("Could not read payload", e);
     }
+  }
+
+  private ByteBuffer mapValue(Object payloadObject) throws IOException {
+    if (objectMapper == null) {
+      throw new IOException("No object mapper configured");
+    }
+    return objectMapper.valueAsBytes(payloadObject);
   }
 
   @Override

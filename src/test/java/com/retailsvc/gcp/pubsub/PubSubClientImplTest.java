@@ -1,8 +1,10 @@
 package com.retailsvc.gcp.pubsub;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -10,11 +12,11 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.core.ApiFutures;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.pubsub.v1.PubsubMessage;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -33,7 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class PubSubClientImplTest {
 
-  @Mock ObjectMapper objectMapper;
+  @Mock ObjectToBytesMapper objectMapper;
   @Mock Publisher mockPublisher;
 
   @Test
@@ -56,7 +58,7 @@ class PubSubClientImplTest {
   @ParameterizedTest
   @MethodSource("publishInput")
   void testCanPublish(Object payload, Map<String, String> attributes) throws Exception {
-    lenient().when(objectMapper.writeValueAsBytes(any())).thenReturn(new byte[0]);
+    lenient().when(objectMapper.valueAsBytes(any())).thenReturn(ByteBuffer.wrap(new byte[0]));
     when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture(""));
 
     try (PubSubClientImpl client = createClient()) {
@@ -125,8 +127,18 @@ class PubSubClientImplTest {
     verify(mockPublisher).awaitTermination(10L, TimeUnit.SECONDS);
   }
 
+  @Test
+  void testThrowsIOExceptionOnMissingMapper() {
+    try (PubSubClientImpl client = new PubSubClientImpl(() -> mockPublisher, null)) {
+      var payload = new Object();
+      Map<String, String> attributes = Map.of();
+      var ex = assertThrows(PubSubClientException.class, () -> client.publish(payload, attributes));
+      assertThat(ex).hasCauseInstanceOf(IOException.class);
+    }
+  }
+
   private PubSubClientImpl createClient() {
-    return new PubSubClientImpl(() -> mockPublisher, objectMapper::writeValueAsBytes);
+    return new PubSubClientImpl(() -> mockPublisher, objectMapper);
   }
 
   private record TestPayload(String key) {}

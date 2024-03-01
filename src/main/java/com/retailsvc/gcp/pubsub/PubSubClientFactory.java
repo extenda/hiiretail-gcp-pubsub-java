@@ -2,7 +2,6 @@ package com.retailsvc.gcp.pubsub;
 
 import static com.retailsvc.gcp.pubsub.EmulatorRedirect.PUBSUB_EMULATOR_HOST;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
@@ -25,15 +24,11 @@ public class PubSubClientFactory {
 
   private final Map<String, PubSubClient> clientCache = new ConcurrentHashMap<>();
   private final ObjectToBytesMapper objectMapper;
-  private final ReentrantLock lock = new ReentrantLock();
   private final PublisherFactory publisherFactory;
+  private final ReentrantLock lock = new ReentrantLock();
 
   public PubSubClientFactory() {
-    this(new ObjectMapper());
-  }
-
-  public PubSubClientFactory(ObjectMapper objectMapper) {
-    this(objectMapper::writeValueAsBytes);
+    this((ObjectToBytesMapper) null);
   }
 
   public PubSubClientFactory(ObjectToBytesMapper objectMapper) {
@@ -41,11 +36,7 @@ public class PubSubClientFactory {
   }
 
   public PubSubClientFactory(PublisherFactory publisherFactory) {
-    this(new ObjectMapper(), publisherFactory);
-  }
-
-  public PubSubClientFactory(ObjectMapper objectMapper, PublisherFactory publisherFactory) {
-    this(objectMapper::writeValueAsBytes, publisherFactory);
+    this(null, publisherFactory);
   }
 
   public PubSubClientFactory(ObjectToBytesMapper objectMapper, PublisherFactory publisherFactory) {
