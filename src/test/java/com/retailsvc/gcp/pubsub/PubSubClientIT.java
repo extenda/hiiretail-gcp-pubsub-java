@@ -38,10 +38,7 @@ class PubSubClientIT {
 
   @BeforeEach
   void setUp() throws Exception {
-    factory =
-        new PubSubClientFactory(
-            (ObjectToBytesMapper)
-                v -> ByteBuffer.wrap(String.valueOf(v).getBytes(StandardCharsets.UTF_8)));
+    factory = createFactory();
 
     emulator.start();
 
@@ -66,6 +63,21 @@ class PubSubClientIT {
   }
 
   @Test
+  void canPublishOrdered() {
+    final var clientConfig = new PubSubClientConfig().setMessageOrderingEnabled(true);
+    final var clientFactory = createFactory().setClientConfig(clientConfig);
+
+    try (var pubSubClient = clientFactory.create(testTopic)) {
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered("test", Map.of(), "key"));
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), "key"));
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), null));
+    }
+  }
+
+  @Test
   void testClosingClients() throws Exception {
     try (var pubSubClient = getClient()) {
       assertThatNoException().isThrownBy(() -> pubSubClient.publish("test", Map.of()));
@@ -85,6 +97,12 @@ class PubSubClientIT {
         .isThrownBy(() -> pubSubClient.publish("test", null))
         .isInstanceOf(PubSubClientException.class)
         .withMessage("Client is closed");
+  }
+
+  private static PubSubClientFactory createFactory() {
+    return new PubSubClientFactory(
+        (ObjectToBytesMapper)
+            v -> ByteBuffer.wrap(String.valueOf(v).getBytes(StandardCharsets.UTF_8)));
   }
 
   private PubSubClient getClient() {
