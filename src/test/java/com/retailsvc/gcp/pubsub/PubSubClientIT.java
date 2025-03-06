@@ -55,7 +55,7 @@ class PubSubClientIT {
   }
 
   @Test
-  void canPublish() throws Exception {
+  void canPublish() {
     try (var pubSubClient = getClient()) {
       assertThatNoException().isThrownBy(() -> pubSubClient.publish("test", Map.of()));
       assertThatNoException().isThrownBy(() -> pubSubClient.publish(List.of(1, 2, 3), Map.of()));
@@ -78,7 +78,7 @@ class PubSubClientIT {
   }
 
   @Test
-  void testClosingClients() throws Exception {
+  void testClosingClients() {
     try (var pubSubClient = getClient()) {
       assertThatNoException().isThrownBy(() -> pubSubClient.publish("test", Map.of()));
     }
@@ -88,7 +88,7 @@ class PubSubClientIT {
   }
 
   @Test
-  void testPublishAfterClosedClientThrows() throws Exception {
+  void testPublishAfterClosedClientThrows() {
     var pubSubClient = getClient();
 
     pubSubClient.close();
