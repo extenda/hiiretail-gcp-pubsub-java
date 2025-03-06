@@ -1,5 +1,7 @@
 package com.retailsvc.gcp.pubsub;
 
+import static java.util.Objects.nonNull;
+
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
@@ -47,6 +49,13 @@ class PubSubClientImpl implements PubSubClient {
 
   @Override
   public void publish(Object payloadObject, Map<String, String> attributesMap) {
+    publishOrdered(payloadObject, attributesMap, null);
+  }
+
+  @Override
+  public void publishOrdered(
+      Object payloadObject, Map<String, String> attributesMap, String orderingKey)
+      throws PubSubClientException {
     if (isClosed()) {
       throw new PubSubClientException("Client is closed");
     }
@@ -61,7 +70,7 @@ class PubSubClientImpl implements PubSubClient {
             default -> ByteString.copyFrom(mapValue(payloadObject));
           };
       var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
-      publish(payload, attributes);
+      publish(payload, attributes, orderingKey);
     } catch (NullPointerException | IOException e) {
       throw new PubSubClientException("Could not read payload", e);
     }
@@ -79,8 +88,11 @@ class PubSubClientImpl implements PubSubClient {
     return isClosed.get();
   }
 
-  protected void publish(ByteString payload, Map<String, String> attributes) {
+  protected void publish(ByteString payload, Map<String, String> attributes, String orderingKey) {
     var pubsubMessage = PubsubMessage.newBuilder().putAllAttributes(attributes).setData(payload);
+    if (nonNull(orderingKey)) {
+      pubsubMessage.setOrderingKey(orderingKey);
+    }
 
     try {
       ApiFuture<String> publishResult = publisher.publish(pubsubMessage.build());

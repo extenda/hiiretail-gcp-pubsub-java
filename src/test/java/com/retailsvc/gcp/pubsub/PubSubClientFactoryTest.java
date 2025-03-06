@@ -42,4 +42,12 @@ class PubSubClientFactoryTest {
       assertNotNull(client);
     }
   }
+
+  @Test
+  void thatConfigCanBeSet() {
+    final var clientFactory = new PubSubClientFactory().setClientConfig(new PubSubClientConfig());
+    try (var client = clientFactory.create("test")) {
+      assertNotNull(client);
+    }
+  }
 }

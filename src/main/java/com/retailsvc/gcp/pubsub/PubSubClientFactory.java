@@ -1,6 +1,7 @@
 package com.retailsvc.gcp.pubsub;
 
 import static com.retailsvc.gcp.pubsub.EmulatorRedirect.PUBSUB_EMULATOR_HOST;
+import static java.util.Objects.nonNull;
 
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.pubsub.v1.TopicName;
@@ -26,6 +27,7 @@ public class PubSubClientFactory {
   private final ObjectToBytesMapper objectMapper;
   private final PublisherFactory publisherFactory;
   private final ReentrantLock lock = new ReentrantLock();
+  private PubSubClientConfig clientConfig;
 
   public PubSubClientFactory() {
     this((ObjectToBytesMapper) null);
@@ -42,6 +44,11 @@ public class PubSubClientFactory {
   public PubSubClientFactory(ObjectToBytesMapper objectMapper, PublisherFactory publisherFactory) {
     this.objectMapper = objectMapper;
     this.publisherFactory = publisherFactory;
+  }
+
+  public PubSubClientFactory setClientConfig(PubSubClientConfig clientConfig) {
+    this.clientConfig = clientConfig;
+    return this;
   }
 
   /**
@@ -73,6 +80,9 @@ public class PubSubClientFactory {
     return () -> {
       try {
         var builder = publisherFactory.newBuilder(createTopic(topic));
+        if (nonNull(clientConfig) && clientConfig.isMessageOrderingEnabled()) {
+          builder.setEnableMessageOrdering(true);
+        }
         emulatorHost().ifPresent(ignored -> EmulatorRedirect.redirect(builder));
         return builder.build();
       } catch (IOException e) {
