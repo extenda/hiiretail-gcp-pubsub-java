@@ -1,5 +1,7 @@
 package com.retailsvc.gcp.pubsub;
 
+import static java.util.Objects.nonNull;
+
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
@@ -88,7 +90,7 @@ class PubSubClientImpl implements PubSubClient {
 
   protected void publish(ByteString payload, Map<String, String> attributes, String orderingKey) {
     var pubsubMessage = PubsubMessage.newBuilder().putAllAttributes(attributes).setData(payload);
-    if (orderingKey != null) {
+    if (nonNull(orderingKey)) {
       pubsubMessage.setOrderingKey(orderingKey);
     }
 

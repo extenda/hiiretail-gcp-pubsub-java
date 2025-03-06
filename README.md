@@ -78,12 +78,15 @@ Any client that is created via the factory is also cached internally by its topi
 ```java
 import com.retailsvc.gcp.pubsub.ObjectToBytesMapper;
 import com.retailsvc.gcp.pubsub.PooledPublisherFactory;
+import com.retailsvc.gcp.pubsub.PubSubClientConfig;
 
 ObjectMapper jsonMapper = new ObjectMapper();
 ObjectToBytesMapper objectMapper = v -> ByteBuffer.wrap(jsonMapper.writeValueAsBytes(v));
+PubSubClientConfig clientConfig = new PubSubClientConfig().setMessageOrderingEnabled(true);
 
-PubSubClientFactory factory = new PubSubClientFactory(objectMapper,
-  PooledPublisherFactory.defaultPool());
+PubSubClientFactory factory =
+  new PubSubClientFactory(objectMapper, PooledPublisherFactory.defaultPool())
+      .setClientConfig(clientConfig);
 
 PubSubClient pubSubClient = factory.create("example.entities.v1");
 
@@ -97,6 +100,10 @@ Object payload = ...
 */
 Map<String, String> attributes = Map.of("Tenant-Id", "...", "key", "value");
 pubSubClient.publish(payload, attributes);
+
+// Publish with message ordering so that messages with 'myTenantId' is processed in order
+String orderingKey = "myTenantId";
+pubSubClient.publishOrdered(payload, attributes, orderingKey);
 ```
 
 ## :wrench: Local development environment
