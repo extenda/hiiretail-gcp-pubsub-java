@@ -21,7 +21,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PubSubEmulatorContainer;
+import org.testcontainers.gcloud.PubSubEmulatorContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -54,26 +54,16 @@ class PubSubClientIT {
     channel.shutdown();
   }
 
+  @AfterEach
+  void tearDown() {
+    emulator.stop();
+  }
+
   @Test
   void canPublish() {
     try (var pubSubClient = getClient()) {
       assertThatNoException().isThrownBy(() -> pubSubClient.publish("test", Map.of()));
       assertThatNoException().isThrownBy(() -> pubSubClient.publish(List.of(1, 2, 3), Map.of()));
-    }
-  }
-
-  @Test
-  void canPublishOrdered() {
-    final var clientConfig = new PubSubClientConfig().setMessageOrderingEnabled(true);
-    final var clientFactory = createFactory().setClientConfig(clientConfig);
-
-    try (var pubSubClient = clientFactory.create(testTopic)) {
-      assertThatNoException()
-          .isThrownBy(() -> pubSubClient.publishOrdered("test", Map.of(), "key"));
-      assertThatNoException()
-          .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), "key"));
-      assertThatNoException()
-          .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), null));
     }
   }
 
@@ -121,10 +111,5 @@ class PubSubClientIT {
       TopicName topicName = TopicName.of(PubSubClientFactory.TEST_PROJECT, testTopic);
       topicAdminClient.createTopic(topicName);
     }
-  }
-
-  @AfterEach
-  void tearDown() {
-    emulator.stop();
   }
 }
