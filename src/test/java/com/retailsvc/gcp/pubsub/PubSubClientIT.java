@@ -29,7 +29,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class PubSubClientIT {
 
-  String image = "gcr.io/google.com/cloudsdktool/google-cloud-cli:latest";
+  String image = "gcr.io/google.com/cloudsdktool/cloud-sdk:emulators";
   DockerImageName dockerImage = DockerImageName.parse(image);
   @Container PubSubEmulatorContainer emulator = new PubSubEmulatorContainer(dockerImage);
 
