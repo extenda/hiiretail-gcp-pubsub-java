@@ -68,6 +68,21 @@ class PubSubClientIT {
   }
 
   @Test
+  void canPublishOrdered() {
+    final var clientConfig = new PubSubClientConfig().setMessageOrderingEnabled(true);
+    final var clientFactory = createFactory().setClientConfig(clientConfig);
+
+    try (var pubSubClient = clientFactory.create(testTopic)) {
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered("test", Map.of(), "key"));
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), "key"));
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), null));
+    }
+  }
+
+  @Test
   void testClosingClients() {
     try (var pubSubClient = getClient()) {
       assertThatNoException().isThrownBy(() -> pubSubClient.publish("test", Map.of()));
