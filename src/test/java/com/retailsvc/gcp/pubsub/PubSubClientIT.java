@@ -21,7 +21,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PubSubEmulatorContainer;
+import org.testcontainers.gcloud.PubSubEmulatorContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -29,7 +29,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class PubSubClientIT {
 
-  String image = "gcr.io/google.com/cloudsdktool/google-cloud-cli:latest";
+  String image = "gcr.io/google.com/cloudsdktool/cloud-sdk:emulators";
   DockerImageName dockerImage = DockerImageName.parse(image);
   @Container PubSubEmulatorContainer emulator = new PubSubEmulatorContainer(dockerImage);
 
@@ -52,6 +52,11 @@ class PubSubClientIT {
     createTopic(channelProvider, NoCredentialsProvider.create());
 
     channel.shutdown();
+  }
+
+  @AfterEach
+  void tearDown() {
+    emulator.stop();
   }
 
   @Test
@@ -121,10 +126,5 @@ class PubSubClientIT {
       TopicName topicName = TopicName.of(PubSubClientFactory.TEST_PROJECT, testTopic);
       topicAdminClient.createTopic(topicName);
     }
-  }
-
-  @AfterEach
-  void tearDown() {
-    emulator.stop();
   }
 }
