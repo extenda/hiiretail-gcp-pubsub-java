@@ -42,6 +42,8 @@ jobs:
 
       - name: Create release
         uses: extenda/actions/conventional-release@v0
+        with:
+          name: hiiretail-gcp-pubsub-java
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,4 +53,4 @@ jobs:
         with:
           args: deploy -DskipTests
           version: ${{ steps.release.outputs.version }}
-          service-account-key: ${{ secrets.SECRET_AUTH }}
+          service-account-key: ${{ secrets.GCLOUD_AUTH_PROD }}
