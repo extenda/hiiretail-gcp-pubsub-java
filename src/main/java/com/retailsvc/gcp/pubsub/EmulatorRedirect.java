@@ -37,7 +37,8 @@ class EmulatorRedirect {
     CredentialsProvider credentialsProvider = NoCredentialsProvider.create();
 
     // Set the channel and credentials provider when creating a `Publisher`.
-    builder.setChannelProvider(channelProvider).setCredentialsProvider(credentialsProvider);
+    builder.setChannelProvider(channelProvider);
+    builder.setCredentialsProvider(credentialsProvider);
   }
 
   private static TransportChannelProvider createChannelProvider(String hostPort) {

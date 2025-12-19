@@ -5,4 +5,17 @@ updates:
       - nexus-releases
     directory: '/'
     schedule:
-      interval: monthly
+      interval: weekly
+    groups:
+      java:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    groups:
+      pipeline:
+        patterns:
+          - "*"
