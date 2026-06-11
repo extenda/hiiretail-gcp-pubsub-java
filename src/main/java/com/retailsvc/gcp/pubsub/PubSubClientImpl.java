@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -60,17 +62,84 @@ class PubSubClientImpl implements PubSubClient {
       throw new PubSubClientException("Client is closed");
     }
 
+    var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
+    publish(toByteString(payloadObject), attributes, orderingKey);
+  }
+
+  @Override
+  public List<String> publishAll(List<OutgoingMessage> messages) throws PubSubClientException {
+    if (isClosed()) {
+      throw new PubSubClientException("Client is closed");
+    }
+    Objects.requireNonNull(messages, "messages must not be null");
+    if (messages.isEmpty()) {
+      return List.of();
+    }
+
+    // Build every message up front so a malformed payload fails fast, before anything is sent.
+    var pubsubMessages = messages.stream().map(this::toPubsubMessage).toList();
+
+    // Submit all messages before awaiting any result, so the underlying publisher can batch them
+    // together. Waiting per message (as publish does) keeps only one message in flight and defeats
+    // batching.
+    var futures = pubsubMessages.stream().map(publisher::publish).toList();
+
+    return awaitAll(futures);
+  }
+
+  private PubsubMessage toPubsubMessage(OutgoingMessage message) {
+    var attributes = Optional.ofNullable(message.attributes()).orElseGet(HashMap::new);
+    var builder =
+        PubsubMessage.newBuilder()
+            .putAllAttributes(attributes)
+            .setData(toByteString(message.payload()));
+    if (nonNull(message.orderingKey())) {
+      builder.setOrderingKey(message.orderingKey());
+    }
+    return builder.build();
+  }
+
+  private List<String> awaitAll(List<ApiFuture<String>> futures) {
+    var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(publishTimeout);
+    var ids = new ArrayList<String>(futures.size());
+    var failures = 0;
+    PubSubClientException firstFailure = null;
+    for (var future : futures) {
+      try {
+        var remaining = deadline - System.nanoTime();
+        ids.add(future.get(Math.max(remaining, 0), TimeUnit.NANOSECONDS));
+      } catch (ExecutionException e) {
+        failures++;
+        firstFailure =
+            Optional.ofNullable(firstFailure)
+                .orElseGet(() -> new PubSubClientException("Generic execution error", e));
+      } catch (TimeoutException e) {
+        failures++;
+        firstFailure =
+            Optional.ofNullable(firstFailure)
+                .orElseGet(
+                    () -> new PubSubClientException("Timed out waiting for publish result", e));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new PubSubClientException("Interrupted while waiting for publish result", e);
+      }
+    }
+    if (failures > 0) {
+      throw new PubSubClientException(
+          "Failed to publish %d of %d messages".formatted(failures, futures.size()), firstFailure);
+    }
+    return ids;
+  }
+
+  private ByteString toByteString(Object payloadObject) {
     try {
-      ByteString payload =
-          switch (payloadObject) {
-            case String s -> ByteString.copyFromUtf8(s);
-            case ByteBuffer b -> ByteString.copyFrom(b);
-            case InputStream i -> ByteString.readFrom(i);
-            case null -> throw new PubSubClientException("Payload object cannot be null");
-            default -> ByteString.copyFrom(mapValue(payloadObject));
-          };
-      var attributes = Optional.ofNullable(attributesMap).orElseGet(HashMap::new);
-      publish(payload, attributes, orderingKey);
+      return switch (payloadObject) {
+        case String s -> ByteString.copyFromUtf8(s);
+        case ByteBuffer b -> ByteString.copyFrom(b);
+        case InputStream i -> ByteString.readFrom(i);
+        case null -> throw new PubSubClientException("Payload object cannot be null");
+        default -> ByteString.copyFrom(mapValue(payloadObject));
+      };
     } catch (NullPointerException | IOException e) {
       throw new PubSubClientException("Could not read payload", e);
     }

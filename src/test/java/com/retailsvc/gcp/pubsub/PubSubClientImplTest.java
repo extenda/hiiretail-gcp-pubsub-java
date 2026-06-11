@@ -9,6 +9,8 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +20,7 @@ import com.google.pubsub.v1.PubsubMessage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +32,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -135,6 +139,107 @@ class PubSubClientImplTest {
       var ex = assertThrows(PubSubClientException.class, () -> client.publish(payload, attributes));
       assertThat(ex).hasCauseInstanceOf(IOException.class);
     }
+  }
+
+  @Test
+  void publishAllReturnsIdsInOrder() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(
+            ApiFutures.immediateFuture("id-1"),
+            ApiFutures.immediateFuture("id-2"),
+            ApiFutures.immediateFuture("id-3"));
+
+    try (PubSubClientImpl client = createClient()) {
+      var ids =
+          client.publishAll(
+              List.of(
+                  OutgoingMessage.of("a", null),
+                  OutgoingMessage.of("b", null),
+                  OutgoingMessage.of("c", null)));
+      assertThat(ids).containsExactly("id-1", "id-2", "id-3");
+    }
+    verify(mockPublisher, times(3)).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishAllSubmitsEveryMessageThenThrowsOnPartialFailure() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(
+            ApiFutures.immediateFuture("id-1"),
+            ApiFutures.immediateFailedFuture(new RuntimeException("boom")),
+            ApiFutures.immediateFuture("id-3"));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(
+              () ->
+                  client.publishAll(
+                      List.of(
+                          OutgoingMessage.of("a", null),
+                          OutgoingMessage.of("b", null),
+                          OutgoingMessage.of("c", null))))
+          .isInstanceOf(PubSubClientException.class)
+          .withMessageContaining("Failed to publish 1 of 3 messages");
+    }
+    // Every message is submitted to the publisher even though the second one fails.
+    verify(mockPublisher, times(3)).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishAllReturnsEmptyForEmptyInput() {
+    try (PubSubClientImpl client = createClient()) {
+      assertThat(client.publishAll(List.of())).isEmpty();
+    }
+    verify(mockPublisher, never()).publish(any());
+  }
+
+  @Test
+  void publishAllThrowsOnClosedClient() {
+    PubSubClientImpl client = createClient();
+    client.close();
+
+    assertThatException()
+        .isThrownBy(() -> client.publishAll(List.of(OutgoingMessage.of("a", null))))
+        .isInstanceOf(PubSubClientException.class)
+        .withMessage("Client is closed");
+  }
+
+  @Test
+  void publishAllAppliesSharedAttributesAndOrderingKey() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFuture("id-1"), ApiFutures.immediateFuture("id-2"));
+    var captor = ArgumentCaptor.forClass(PubsubMessage.class);
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishAll(
+          List.of(
+              OutgoingMessage.of("a", Map.of("Kind", "test")),
+              OutgoingMessage.ordered("b", Map.of("Kind", "test"), "key-b")));
+    }
+
+    verify(mockPublisher, times(2)).publish(captor.capture());
+    assertThat(captor.getAllValues())
+        .allSatisfy(
+            message -> assertThat(message.getAttributesMap()).containsEntry("Kind", "test"));
+    assertThat(captor.getAllValues().get(0).getOrderingKey()).isEmpty();
+    assertThat(captor.getAllValues().get(1).getOrderingKey()).isEqualTo("key-b");
+  }
+
+  @Test
+  void publishAllConvenienceWrapperAppliesAttributesToAllPayloads() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFuture("id-1"), ApiFutures.immediateFuture("id-2"));
+    var captor = ArgumentCaptor.forClass(PubsubMessage.class);
+
+    try (PubSubClientImpl client = createClient()) {
+      var ids = client.publishAll(List.of("a", "b"), Map.of("Kind", "test"));
+      assertThat(ids).containsExactly("id-1", "id-2");
+    }
+
+    verify(mockPublisher, times(2)).publish(captor.capture());
+    assertThat(captor.getAllValues())
+        .allSatisfy(
+            message -> assertThat(message.getAttributesMap()).containsEntry("Kind", "test"));
   }
 
   private PubSubClientImpl createClient() {
