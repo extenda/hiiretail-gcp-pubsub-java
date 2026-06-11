@@ -35,18 +35,18 @@
     <!-- Sonar settings -->
     <sonar.junit.reportPaths>${project.build.directory}/surefire-reports</sonar.junit.reportPaths>
     <sonar.jacoco.reportPaths>${project.build.directory}/jacoco.exec, ${user.dir}/target/jacoco-it.exec</sonar.jacoco.reportPaths>
-    <version.assertj>3.27.6</version.assertj>
-    <version.google-cloud>26.72.0</version.google-cloud>
+    <version.assertj>3.27.7</version.assertj>
+    <version.google-cloud>26.83.0</version.google-cloud>
     <version.jacoco-maven-plugin>0.8.14</version.jacoco-maven-plugin>
-    <version.junit-jupiter>6.0.1</version.junit-jupiter>
+    <version.junit-jupiter>6.1.0</version.junit-jupiter>
     <version.maven-compiler-plugin>3.14.1</version.maven-compiler-plugin>
     <version.maven-jar-plugin>3.5.0</version.maven-jar-plugin>
     <version.maven-source-plugin>3.3.1</version.maven-source-plugin>
     <version.maven-surefire-plugin>3.5.4</version.maven-surefire-plugin>
     <version.maven-failsafe-plugin>3.5.4</version.maven-failsafe-plugin>
-    <version.mockito>5.21.0</version.mockito>
-    <version.slf4j>2.0.17</version.slf4j>
-    <version.testcontainers>2.0.2</version.testcontainers>
+    <version.mockito>5.23.0</version.mockito>
+    <version.slf4j>2.0.18</version.slf4j>
+    <version.testcontainers>2.0.5</version.testcontainers>
   </properties>
 
   <scm>
@@ -111,7 +111,7 @@
       <!-- This is due to Mockito not being allowed to dynamically load agents. Consider as hack! -->
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy</artifactId>
-      <version>1.14.9</version>
+      <version>1.18.10</version>
       <scope>test</scope>
     </dependency>
     <dependency>
