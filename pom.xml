@@ -58,7 +58,7 @@
     <repository>
       <id>artifact-registry-releases</id>
       <name>Extenda Retail Releases</name>
-      <url>https://europe-west1-maven.pkg.dev/extenda/maven-releases</url>
+      <url>artifactregistry://europe-west1-maven.pkg.dev/extenda/maven-releases</url>
     </repository>
   </distributionManagement>
 
