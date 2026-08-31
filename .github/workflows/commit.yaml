@@ -1,5 +1,6 @@
 name: Commit
 on: push
+
 permissions:
   contents: read
   id-token: write
