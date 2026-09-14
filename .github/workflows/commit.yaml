@@ -22,10 +22,18 @@ jobs:
             cache: 'maven'
 
         - name: Run tests
+          if: github.actor != 'dependabot[bot]'
           uses: extenda/actions/maven@v0
           with:
             args: verify
             service-account-key: ${{ secrets.SECRET_AUTH }}
+
+        # Dependabot runs read the Dependabot secret store, where SECRET_AUTH
+        # is not available to this public repo. Dependencies resolve from
+        # Maven Central, so run the tests without GCP credentials.
+        - name: Run tests (Dependabot)
+          if: github.actor == 'dependabot[bot]'
+          run: ./mvnw -V -B verify
 
         - name: Scan with SonarCloud
           uses: extenda/actions/sonar-scanner@v0
