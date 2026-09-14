@@ -36,6 +36,7 @@ jobs:
           run: ./mvnw -V -B verify
 
         - name: Scan with SonarCloud
+          if: github.actor != 'dependabot[bot]'
           uses: extenda/actions/sonar-scanner@v0
           with:
             sonar-host: https://sonarcloud.io
