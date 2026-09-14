@@ -3,11 +3,14 @@ on: push
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   test:
+      if: github.actor != 'dependabot[bot]'
       runs-on: ubuntu-latest
+      permissions:
+        contents: read
+        id-token: write
       steps:
         - &checkout
           uses: actions/checkout@v7
@@ -22,27 +25,32 @@ jobs:
             cache: 'maven'
 
         - name: Run tests
-          if: github.actor != 'dependabot[bot]'
           uses: extenda/actions/maven@v0
           with:
             args: verify
             service-account-key: ${{ secrets.SECRET_AUTH }}
 
-        # Dependabot runs read the Dependabot secret store, where SECRET_AUTH
-        # is not available to this public repo. Dependencies resolve from
-        # Maven Central, so run the tests without GCP credentials.
-        - name: Run tests (Dependabot)
-          if: github.actor == 'dependabot[bot]'
-          run: ./mvnw -V -B verify
-
         - name: Scan with SonarCloud
-          if: github.actor != 'dependabot[bot]'
           uses: extenda/actions/sonar-scanner@v0
           with:
             sonar-host: https://sonarcloud.io
             sonar-scanner: maven
             main-branch: master
             service-account-key: ${{ secrets.SECRET_AUTH }}
+
+  # Dependabot runs cannot read SECRET_AUTH in this public repo, and must not
+  # get an OIDC token while running the bumped dependencies' build and test
+  # code. Dependencies resolve from Maven Central, so no credentials are needed.
+  test-dependabot:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout
+
+      - *setup-java
+
+      - name: Run tests
+        run: ./mvnw -V -B verify
 
   release:
     if: github.ref == 'refs/heads/master'
