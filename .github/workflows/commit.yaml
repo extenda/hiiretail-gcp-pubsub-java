@@ -3,11 +3,14 @@ on: push
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   test:
+      if: github.actor != 'dependabot[bot]'
       runs-on: ubuntu-latest
+      permissions:
+        contents: read
+        id-token: write
       steps:
         - &checkout
           uses: actions/checkout@v7
@@ -34,6 +37,20 @@ jobs:
             sonar-scanner: maven
             main-branch: master
             service-account-key: ${{ secrets.SECRET_AUTH }}
+
+  # Dependabot runs cannot read SECRET_AUTH in this public repo, and must not
+  # get an OIDC token while running the bumped dependencies' build and test
+  # code. Dependencies resolve from Maven Central, so no credentials are needed.
+  test-dependabot:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout
+
+      - *setup-java
+
+      - name: Run tests
+        run: ./mvnw -V -B verify
 
   release:
     if: github.ref == 'refs/heads/master'
