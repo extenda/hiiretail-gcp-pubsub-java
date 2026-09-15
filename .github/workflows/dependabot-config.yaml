@@ -1,0 +1,15 @@
+name: Generate Dependabot config
+
+on: workflow_dispatch
+
+jobs:
+  generate:
+    uses: extenda/shared-dependabot/.github/workflows/dependabot-config.yml@v1
+    with:
+      interval: weekly
+      day-of-week: tuesday
+      time-of-day: '10:40'
+      timezone: Europe/Stockholm
+    secrets:
+      EXTENDA_BOT_APP_ID: ${{ secrets.EXTENDA_BOT_APP_ID }}
+      EXTENDA_BOT_PRIVATE_KEY: ${{ secrets.EXTENDA_BOT_PRIVATE_KEY }}

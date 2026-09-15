@@ -1,0 +1,21 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  auto-merge:
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    uses: extenda/shared-dependabot/.github/workflows/dependabot-auto-merge.yml@v1
+    with:
+      auto-merge-groups: patch-updates,minor-updates
+    secrets:
+      EXTENDA_BOT_APP_ID: ${{ secrets.EXTENDA_BOT_APP_ID }}
+      EXTENDA_BOT_PRIVATE_KEY: ${{ secrets.EXTENDA_BOT_PRIVATE_KEY }}
