@@ -111,7 +111,7 @@
       <!-- This is due to Mockito not being allowed to dynamically load agents. Consider as hack! -->
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy</artifactId>
-      <version>1.18.13</version>
+      <version>1.18.14</version>
       <scope>test</scope>
     </dependency>
     <dependency>
