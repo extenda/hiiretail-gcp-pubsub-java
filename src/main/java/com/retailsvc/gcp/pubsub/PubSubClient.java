@@ -26,6 +26,11 @@ public interface PubSubClient extends AutoCloseable {
    * Publish a message on PubSub using a key for ordering. The method will block until either
    * successful publishing completes, or an error is raised.
    *
+   * <p>A failed publish does not block the ordering key: the next publish with the same key is sent
+   * as usual. Messages published with a key after a failure can reach subscribers before a failed
+   * message the caller publishes again, so a caller that needs strict ordering must stop publishing
+   * with that key until the failed message has been published again.
+   *
    * @param payloadObject The payload to send
    * @param attributesMap The map of attributes to send
    * @param orderingKey The key used for ordering of the messages
@@ -42,7 +47,9 @@ public interface PubSubClient extends AutoCloseable {
    *
    * <p>Every message is always submitted, even if some fail. If one or more messages fail to
    * publish, a {@link PubSubClientException} is thrown after all results have been awaited, with
-   * the first failure as its cause.
+   * the first failure as its cause. After a message with an ordering key fails, the messages with
+   * the same key that follow it in the batch fail too, and the key is usable again by the next
+   * publish.
    *
    * @param messages the messages to publish, in the order their ids are returned
    * @return the published message ids, in the same order as {@code messages}

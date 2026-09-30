@@ -78,6 +78,10 @@ class PubSubClientImpl implements PubSubClient {
 
     // Build every message up front so a malformed payload fails fast, before anything is sent.
     var pubsubMessages = messages.stream().map(this::toPubsubMessage).toList();
+    pubsubMessages.stream()
+        .map(PubsubMessage::getOrderingKey)
+        .distinct()
+        .forEach(this::resumeIfPaused);
 
     // Submit all messages before awaiting any result, so the underlying publisher can batch them
     // together. Waiting per message (as publish does) keeps only one message in flight and defeats
@@ -161,6 +165,7 @@ class PubSubClientImpl implements PubSubClient {
     var pubsubMessage = PubsubMessage.newBuilder().putAllAttributes(attributes).setData(payload);
     if (nonNull(orderingKey)) {
       pubsubMessage.setOrderingKey(orderingKey);
+      resumeIfPaused(orderingKey);
     }
 
     try {
@@ -174,6 +179,23 @@ class PubSubClientImpl implements PubSubClient {
       throw new PubSubClientException("Interrupted while waiting for publish result", e);
     } catch (TimeoutException e) {
       throw new PubSubClientException("Timed out waiting for publish result", e);
+    }
+  }
+
+  /**
+   * When a publish with an ordering key fails, the underlying publisher pauses that key and fails
+   * every later publish with it until {@link Publisher#resumePublish(String)} is called. Callers of
+   * this client already get the failure as an exception, so the key is resumed before each publish
+   * rather than leaving it paused for the life of the client.
+   *
+   * <p>Resuming here instead of on failure is deliberate: the publisher marks the key as paused
+   * only after it fails the message's future, so a resume issued on failure can run first and be
+   * undone. It also covers a publish that timed out here and failed afterwards. Resuming a key that
+   * is not paused has no effect.
+   */
+  private void resumeIfPaused(String orderingKey) {
+    if (!orderingKey.isEmpty()) {
+      publisher.resumePublish(orderingKey);
     }
   }
 

@@ -106,6 +106,12 @@ String orderingKey = "myTenantId";
 pubSubClient.publishOrdered(payload, attributes, orderingKey);
 ```
 
+When a publish with an ordering key fails, the Google publisher pauses that key and rejects every
+later message with it. The client resumes the key before each ordered publish, so a single failure
+does not block the key for the lifetime of the client. The failed message is reported to the caller
+as a `PubSubClientException`; publish it again before continuing with that key if subscribers need
+strict ordering.
+
 ## :wrench: Local development environment
 
 * JDK 21+

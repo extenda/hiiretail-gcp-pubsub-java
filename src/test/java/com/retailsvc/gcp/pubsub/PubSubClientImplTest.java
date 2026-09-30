@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -240,6 +241,51 @@ class PubSubClientImplTest {
     assertThat(captor.getAllValues())
         .allSatisfy(
             message -> assertThat(message.getAttributesMap()).containsEntry("Kind", "test"));
+  }
+
+  @Test
+  void publishOrderedResumesTheKeyBeforePublishing() {
+    when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id-1"));
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishOrdered("a", null, "key-a");
+    }
+
+    var order = inOrder(mockPublisher);
+    order.verify(mockPublisher).resumePublish("key-a");
+    order.verify(mockPublisher).publish(any(PubsubMessage.class));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void publishWithoutOrderingKeyDoesNotResume(String orderingKey) {
+    when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id-1"));
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishOrdered("a", null, orderingKey);
+    }
+
+    verify(mockPublisher, never()).resumePublish(any());
+  }
+
+  @Test
+  void publishAllResumesEachOrderingKeyOnceBeforePublishing() {
+    when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id"));
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishAll(
+          List.of(
+              OutgoingMessage.ordered("a", null, "key-a"),
+              OutgoingMessage.ordered("b", null, "key-a"),
+              OutgoingMessage.ordered("c", null, "key-c"),
+              OutgoingMessage.of("d", null)));
+    }
+
+    var order = inOrder(mockPublisher);
+    order.verify(mockPublisher).resumePublish("key-a");
+    order.verify(mockPublisher).resumePublish("key-c");
+    order.verify(mockPublisher, times(4)).publish(any(PubsubMessage.class));
+    verify(mockPublisher, times(2)).resumePublish(any());
   }
 
   private PubSubClientImpl createClient() {
