@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -165,12 +166,10 @@ class PubSubClientImpl implements PubSubClient {
     var pubsubMessage = PubsubMessage.newBuilder().putAllAttributes(attributes).setData(payload);
     if (nonNull(orderingKey)) {
       pubsubMessage.setOrderingKey(orderingKey);
-      resumeIfPaused(orderingKey);
     }
 
     try {
-      ApiFuture<String> publishResult = publisher.publish(pubsubMessage.build());
-      String id = publishResult.get(publishTimeout, TimeUnit.SECONDS);
+      String id = sendResumingPausedKey(pubsubMessage.build());
       LOG.debug("Message [{}] published", id);
     } catch (ExecutionException e) {
       throw new PubSubClientException("Generic execution error", e);
@@ -183,15 +182,38 @@ class PubSubClientImpl implements PubSubClient {
   }
 
   /**
+   * Sends the message, and if the publisher cancelled it because its ordering key is paused by an
+   * earlier failure, resumes the key and sends it once more. Both attempts share one publish
+   * timeout. A cancelled message was never sent, so sending it again cannot duplicate it, and the
+   * publisher pauses the key before it cancels a message, so the resume cannot be undone.
+   */
+  private String sendResumingPausedKey(PubsubMessage message)
+      throws ExecutionException, InterruptedException, TimeoutException {
+    var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(publishTimeout);
+    try {
+      return send(message, deadline);
+    } catch (ExecutionException e) {
+      if (message.getOrderingKey().isEmpty() || !(e.getCause() instanceof CancellationException)) {
+        throw e;
+      }
+      LOG.debug("Resuming paused ordering key [{}] and resending", message.getOrderingKey());
+      publisher.resumePublish(message.getOrderingKey());
+      return send(message, deadline);
+    }
+  }
+
+  private String send(PubsubMessage message, long deadline)
+      throws ExecutionException, InterruptedException, TimeoutException {
+    return publisher
+        .publish(message)
+        .get(Math.max(deadline - System.nanoTime(), 0), TimeUnit.NANOSECONDS);
+  }
+
+  /**
    * When a publish with an ordering key fails, the underlying publisher pauses that key and fails
-   * every later publish with it until {@link Publisher#resumePublish(String)} is called. Callers of
-   * this client already get the failure as an exception, so the key is resumed before each publish
-   * rather than leaving it paused for the life of the client.
-   *
-   * <p>Resuming here instead of on failure is deliberate: the publisher marks the key as paused
-   * only after it fails the message's future, so a resume issued on failure can run first and be
-   * undone. It also covers a publish that timed out here and failed afterwards. Resuming a key that
-   * is not paused has no effect.
+   * every later publish with it until {@link Publisher#resumePublish(String)} is called. A batch
+   * resumes its keys before it is submitted, rather than resending what was cancelled, so its own
+   * messages behind a failure stay failed. Resuming a key that is not paused has no effect.
    */
   private void resumeIfPaused(String orderingKey) {
     if (!orderingKey.isEmpty()) {

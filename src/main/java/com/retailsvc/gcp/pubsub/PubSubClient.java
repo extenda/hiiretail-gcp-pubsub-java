@@ -48,8 +48,9 @@ public interface PubSubClient extends AutoCloseable {
    * <p>Every message is always submitted, even if some fail. If one or more messages fail to
    * publish, a {@link PubSubClientException} is thrown after all results have been awaited, with
    * the first failure as its cause. After a message with an ordering key fails, the messages with
-   * the same key that follow it in the batch fail too, and the key is usable again by the next
-   * publish.
+   * the same key that follow it in the batch fail too, and the key is resumed by the next publish.
+   * Unlike {@link #publishOrdered(Object, Map, String)}, a message cancelled because an earlier
+   * publish with its key failed at the same moment is reported as failed, not sent again.
    *
    * @param messages the messages to publish, in the order their ids are returned
    * @return the published message ids, in the same order as {@code messages}

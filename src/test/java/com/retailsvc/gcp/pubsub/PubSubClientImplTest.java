@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -244,16 +245,15 @@ class PubSubClientImplTest {
   }
 
   @Test
-  void publishOrderedResumesTheKeyBeforePublishing() {
+  void publishOrderedDoesNotResumeAKeyThatIsNotPaused() {
     when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id-1"));
 
     try (PubSubClientImpl client = createClient()) {
       client.publishOrdered("a", null, "key-a");
     }
 
-    var order = inOrder(mockPublisher);
-    order.verify(mockPublisher).resumePublish("key-a");
-    order.verify(mockPublisher).publish(any(PubsubMessage.class));
+    verify(mockPublisher).publish(any(PubsubMessage.class));
+    verify(mockPublisher, never()).resumePublish(any());
   }
 
   @ParameterizedTest
@@ -266,6 +266,66 @@ class PubSubClientImplTest {
     }
 
     verify(mockPublisher, never()).resumePublish(any());
+  }
+
+  @Test
+  void publishOrderedResendsAMessageCancelledByAPausedKey() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(
+            ApiFutures.immediateFailedFuture(new CancellationException("key paused")),
+            ApiFutures.immediateFuture("id-1"));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatNoException().isThrownBy(() -> client.publishOrdered("a", null, "key-a"));
+    }
+
+    var order = inOrder(mockPublisher);
+    order.verify(mockPublisher).publish(any(PubsubMessage.class));
+    order.verify(mockPublisher).resumePublish("key-a");
+    order.verify(mockPublisher).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishOrderedResendsACancelledMessageOnlyOnce() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFailedFuture(new CancellationException("key paused")));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(() -> client.publishOrdered("a", null, "key-a"))
+          .isInstanceOf(PubSubClientException.class)
+          .withRootCauseInstanceOf(CancellationException.class);
+    }
+
+    verify(mockPublisher, times(2)).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishOrderedDoesNotResendAFailedMessage() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFailedFuture(new RuntimeException("NOT_FOUND")));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(() -> client.publishOrdered("a", null, "key-a"))
+          .isInstanceOf(PubSubClientException.class);
+    }
+
+    verify(mockPublisher).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishWithoutOrderingKeyDoesNotResendACancelledMessage() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFailedFuture(new CancellationException("cancelled")));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(() -> client.publish("a", null))
+          .isInstanceOf(PubSubClientException.class);
+    }
+
+    verify(mockPublisher).publish(any(PubsubMessage.class));
   }
 
   @Test
