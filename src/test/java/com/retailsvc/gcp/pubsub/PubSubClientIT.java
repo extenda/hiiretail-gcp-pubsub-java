@@ -44,14 +44,7 @@ class PubSubClientIT {
 
     System.setProperty(PUBSUB_EMULATOR_HOST, emulator.getEmulatorEndpoint());
 
-    ManagedChannel channel =
-        ManagedChannelBuilder.forTarget(emulator.getEmulatorEndpoint()).usePlaintext().build();
-    TransportChannelProvider channelProvider =
-        FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
-
-    createTopic(channelProvider, NoCredentialsProvider.create());
-
-    channel.shutdown();
+    createTopic(testTopic);
   }
 
   @AfterEach
@@ -79,6 +72,29 @@ class PubSubClientIT {
           .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), "key"));
       assertThatNoException()
           .isThrownBy(() -> pubSubClient.publishOrdered(List.of(1, 2, 3), Map.of(), null));
+    }
+  }
+
+  @Test
+  void orderingKeyIsUsableAgainAfterAFailedPublish() throws IOException {
+    final var clientConfig = new PubSubClientConfig().setMessageOrderingEnabled(true);
+    final var clientFactory = createFactory().setClientConfig(clientConfig);
+    final var missingTopic = "created-after-first-publish";
+
+    try (var pubSubClient = clientFactory.create(missingTopic)) {
+      // NOT_FOUND is not retried, so the publisher fails the message and pauses the key.
+      assertThatException()
+          .isThrownBy(() -> pubSubClient.publishOrdered("first", Map.of(), "key"))
+          .isInstanceOf(PubSubClientException.class);
+
+      createTopic(missingTopic);
+
+      assertThatNoException()
+          .isThrownBy(() -> pubSubClient.publishOrdered("second", Map.of(), "key"));
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  pubSubClient.publishAll(List.of(OutgoingMessage.ordered("third", null, "key"))));
     }
   }
 
@@ -114,17 +130,21 @@ class PubSubClientIT {
     return factory.create(testTopic);
   }
 
-  private void createTopic(
-      TransportChannelProvider channelProvider, NoCredentialsProvider credentialsProvider)
-      throws IOException {
+  private void createTopic(String topic) throws IOException {
+    ManagedChannel channel =
+        ManagedChannelBuilder.forTarget(emulator.getEmulatorEndpoint()).usePlaintext().build();
+    TransportChannelProvider channelProvider =
+        FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
     TopicAdminSettings topicAdminSettings =
         TopicAdminSettings.newBuilder()
             .setTransportChannelProvider(channelProvider)
-            .setCredentialsProvider(credentialsProvider)
+            .setCredentialsProvider(NoCredentialsProvider.create())
             .build();
     try (TopicAdminClient topicAdminClient = TopicAdminClient.create(topicAdminSettings)) {
-      TopicName topicName = TopicName.of(PubSubClientFactory.TEST_PROJECT, testTopic);
+      TopicName topicName = TopicName.of(PubSubClientFactory.TEST_PROJECT, topic);
       topicAdminClient.createTopic(topicName);
+    } finally {
+      channel.shutdown();
     }
   }
 }

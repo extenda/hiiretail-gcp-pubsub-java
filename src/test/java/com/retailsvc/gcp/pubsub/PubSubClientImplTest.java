@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -22,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -240,6 +242,110 @@ class PubSubClientImplTest {
     assertThat(captor.getAllValues())
         .allSatisfy(
             message -> assertThat(message.getAttributesMap()).containsEntry("Kind", "test"));
+  }
+
+  @Test
+  void publishOrderedDoesNotResumeAKeyThatIsNotPaused() {
+    when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id-1"));
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishOrdered("a", null, "key-a");
+    }
+
+    verify(mockPublisher).publish(any(PubsubMessage.class));
+    verify(mockPublisher, never()).resumePublish(any());
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void publishWithoutOrderingKeyDoesNotResume(String orderingKey) {
+    when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id-1"));
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishOrdered("a", null, orderingKey);
+    }
+
+    verify(mockPublisher, never()).resumePublish(any());
+  }
+
+  @Test
+  void publishOrderedResendsAMessageCancelledByAPausedKey() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(
+            ApiFutures.immediateFailedFuture(new CancellationException("key paused")),
+            ApiFutures.immediateFuture("id-1"));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatNoException().isThrownBy(() -> client.publishOrdered("a", null, "key-a"));
+    }
+
+    var order = inOrder(mockPublisher);
+    order.verify(mockPublisher).publish(any(PubsubMessage.class));
+    order.verify(mockPublisher).resumePublish("key-a");
+    order.verify(mockPublisher).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishOrderedResendsACancelledMessageOnlyOnce() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFailedFuture(new CancellationException("key paused")));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(() -> client.publishOrdered("a", null, "key-a"))
+          .isInstanceOf(PubSubClientException.class)
+          .withRootCauseInstanceOf(CancellationException.class);
+    }
+
+    verify(mockPublisher, times(2)).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishOrderedDoesNotResendAFailedMessage() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFailedFuture(new RuntimeException("NOT_FOUND")));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(() -> client.publishOrdered("a", null, "key-a"))
+          .isInstanceOf(PubSubClientException.class);
+    }
+
+    verify(mockPublisher).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishWithoutOrderingKeyDoesNotResendACancelledMessage() {
+    when(mockPublisher.publish(any()))
+        .thenReturn(ApiFutures.immediateFailedFuture(new CancellationException("cancelled")));
+
+    try (PubSubClientImpl client = createClient()) {
+      assertThatException()
+          .isThrownBy(() -> client.publish("a", null))
+          .isInstanceOf(PubSubClientException.class);
+    }
+
+    verify(mockPublisher).publish(any(PubsubMessage.class));
+  }
+
+  @Test
+  void publishAllResumesEachOrderingKeyOnceBeforePublishing() {
+    when(mockPublisher.publish(any())).thenReturn(ApiFutures.immediateFuture("id"));
+
+    try (PubSubClientImpl client = createClient()) {
+      client.publishAll(
+          List.of(
+              OutgoingMessage.ordered("a", null, "key-a"),
+              OutgoingMessage.ordered("b", null, "key-a"),
+              OutgoingMessage.ordered("c", null, "key-c"),
+              OutgoingMessage.of("d", null)));
+    }
+
+    var order = inOrder(mockPublisher);
+    order.verify(mockPublisher).resumePublish("key-a");
+    order.verify(mockPublisher).resumePublish("key-c");
+    order.verify(mockPublisher, times(4)).publish(any(PubsubMessage.class));
+    verify(mockPublisher, times(2)).resumePublish(any());
   }
 
   private PubSubClientImpl createClient() {
